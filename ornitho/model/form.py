@@ -139,6 +139,20 @@ class Form(CreateableModel, DeletableModel):
         self._raw_data["comment"] = value
 
     @property
+    def comment_changes(self) -> Optional[str]:
+        # return self._raw_data["comment_changes"] if "comment_changes" in self._raw_data else None
+        # gha, 25.01.2023
+        form_comment_changes = None
+        form_comment_changes = self._raw_data["comment_changes"] if "comment_changes" in self._raw_data else None
+        try:
+            if form_comment_changes == None:
+                form_comment_changes = self._raw_data["protocol"]["form_comment_changes"] if "protocol" in self._raw_data else None
+        except:
+            form_comment_changes = None
+        return form_comment_changes
+
+
+    @property
     def protocol_name(self) -> Optional[str]:
         return (
             self._raw_data["protocol"]["protocol_name"]
@@ -557,6 +571,22 @@ class Form(CreateableModel, DeletableModel):
                 ].split(",")[0]
             else:
                 return self._raw_data["protocol"]["waterbird_activity_surfers"].split(
+                    ","
+                )[0]
+        return None
+
+    @property
+    def id_waterbird_activity_sups(self) -> Optional[str]:
+        if (
+            "protocol" in self._raw_data
+            and "waterbird_activity_standup" in self._raw_data["protocol"]
+        ):
+            if type(self._raw_data["protocol"]["waterbird_activity_standup"]) is dict:
+                return self._raw_data["protocol"]["waterbird_activity_standup"][
+                    "@id"
+                ].split(",")[0]
+            else:
+                return self._raw_data["protocol"]["waterbird_activity_standup"].split(
                     ","
                 )[0]
         return None

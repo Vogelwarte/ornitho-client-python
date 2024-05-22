@@ -46,6 +46,7 @@ class Precision(Enum):
     SUBPLACE_PRECISE = "subplace_precise"
     IMPRECISE = "imprecise"
     OBJECT = "object"
+    OBJECT_PRECISE = "object_precise"                                  
 
 
 class Source(Enum):
@@ -144,6 +145,12 @@ class Observation(
             int(self._raw_data["observers"][0]["timing"]["@timestamp"]),
         ).astimezone()
         return timing
+
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def timing_win(self) -> datetime:
+        timing_win = datetime(1970, 1, 1) + timedelta(seconds=int(self._raw_data["observers"][0]["timing"]["@timestamp"])) + timedelta(seconds=int(self._raw_data["observers"][0]["timing"]["@offset"]))
+        return timing_win
 
     @timing.setter
     def timing(self, value: datetime):
@@ -442,6 +449,18 @@ class Observation(
 
     @property  # type: ignore
     @check_raw_data("observers")
+    def insert_date_win(self) -> datetime:
+        insert_date_win = (
+            (datetime(1970, 1, 1) + timedelta(seconds=int(self._raw_data["observers"][0]["insert_date"]["@timestamp"])) + timedelta(seconds=int(self._raw_data["observers"][0]["insert_date"]["@offset"]))
+             if type(self._raw_data["observers"][0]["insert_date"]) is dict
+             else int(self._raw_data["observers"][0]["insert_date"]),
+             )
+        )
+        return insert_date_win
+
+
+    @property  # type: ignore
+    @check_raw_data("observers")
     def update_date(self) -> Optional[datetime]:
         update_date = (
             datetime.fromtimestamp(
@@ -453,6 +472,19 @@ class Observation(
             else None
         )
         return update_date
+
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def update_date_win(self) -> Optional[datetime]:
+        update_date_win = (
+            (datetime(1970, 1, 1) + timedelta(seconds=int(self._raw_data["observers"][0]["update_date"]["@timestamp"])) + timedelta(seconds=int(self._raw_data["observers"][0]["update_date"]["@offset"]))
+                if type(self._raw_data["observers"][0]["update_date"]) is dict
+                else int(self._raw_data["observers"][0]["update_date"]),
+            )
+            if "update_date" in self._raw_data["observers"][0]
+            else None
+        )
+        return update_date_win
 
     @property  # type: ignore
     @check_raw_data("place")
@@ -662,6 +694,22 @@ class Observation(
                 {"export_date": {"@timestamp": int(value.timestamp()).__str__()}}
             ]
 
+
+
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def export_date_win(self) -> Optional[datetime]:
+
+        export_date_win = (
+            (datetime(1970, 1, 1) + timedelta(seconds=int(self._raw_data["observers"][0]["export_date"]["@timestamp"])) + timedelta(seconds=int(self._raw_data["observers"][0]["export_date"]["@offset"]))
+                if type(self._raw_data["observers"][0]["export_date"]) is dict
+                else int(self._raw_data["observers"][0]["export_date"]),
+            )
+            if "export_date" in self._raw_data["observers"][0]
+            else None
+        )
+        return export_date_win
+
     @property  # type: ignore
     @check_raw_data("observers")
     def notime(self) -> bool:
@@ -714,6 +762,29 @@ class Observation(
             if "project_name" in self._raw_data["observers"][0]
             else None
         )
+    
+    # gha, 10.05.2021
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def project_param_bdc_guid(self) -> Optional[str]:
+        return (
+            self._raw_data["observers"][0]["project_param"]["BDC-GUID"]
+            if "project_param" in self._raw_data["observers"][0]
+            and "BDC-GUID" in self._raw_data["observers"][0]["project_param"]
+            else None
+        )
+
+    # gha, 20.08.2021
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def project_param_samplearea_id(self) -> Optional[str]:
+        return (
+            self._raw_data["observers"][0]["project_param"]["SAMPLEAREA_ID"]
+            if "project_param" in self._raw_data["observers"][0]
+            and "SAMPLEAREA_ID" in self._raw_data["observers"][0]["project_param"]
+            else None
+        )
+
 
     @property  # type: ignore
     @check_raw_data("observers")
@@ -1001,6 +1072,39 @@ class Observation(
             else None
         )
 
+    # gha, 06.06.2022
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def ring_extended_type(self) -> Optional[str]:
+        return (
+            str(
+                self._raw_data["observers"][0]["extended_info"]["ring"][
+                    "type"
+                ]
+            )
+            if "extended_info" in self._raw_data["observers"][0]
+            and "ring" in self._raw_data["observers"][0]["extended_info"]
+            and "type"
+            in self._raw_data["observers"][0]["extended_info"]["ring"]
+            else None
+        )
+
+    # gha, 06.06.2022
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def ring_extended_inscription(self) -> Optional[str]:
+        return (
+            str(
+                self._raw_data["observers"][0]["extended_info"]["ring"][
+                    "inscription"
+                ]
+            )
+            if "extended_info" in self._raw_data["observers"][0]
+            and "ring" in self._raw_data["observers"][0]["extended_info"]
+            and "inscription"
+            in self._raw_data["observers"][0]["extended_info"]["ring"]
+            else None
+        )
     @property  # type: ignore
     @check_raw_data("observers")
     def nest_number(self) -> Optional[int]:
@@ -1038,6 +1142,22 @@ class Observation(
                 )
         return None
 
+    # gha, 25.01.2023
+    @property  # type: ignore
+    @check_raw_data("observers")
+    def nest_location(self) -> Optional[str]:
+        if (
+            "protocol" in self._raw_data["observers"][0]
+            and "nest_location" in self._raw_data["observers"][0]["protocol"]
+        ):
+            if type(self._raw_data["observers"][0]["protocol"]["nest_location"]) is dict:
+                return str(
+                    self._raw_data["observers"][0]["protocol"]["nest_location"]["@id"]
+                )
+            else:
+                return str(self._raw_data["observers"][0]["protocol"]["nest_location"])
+        return None
+        
     @property  # type: ignore
     @check_raw_data("observers")
     def potential_breeding_pairs(self) -> Optional[int]:
@@ -1451,3 +1571,8 @@ class Observation(
             retries=retries,
         )
         self.relations = self.relations + [Relation(with_id=with_id, type=type)]
+
+    def mark_as_not_exported(self):
+        self.is_exported = False
+        #self.export_date = None
+        self.update()
