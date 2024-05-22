@@ -16,6 +16,7 @@ class Observer(ListableModel):
         """
         super().__init__(id_)
         self._rights: List[Right] = []
+        self._rights_proto: List[Right] = []
 
     @classmethod
     def current(cls) -> "Observer":
@@ -256,3 +257,16 @@ class Observer(ListableModel):
             if not self._rights:
                 self._rights = Right.retrieve_for_observer(self.id_)
         return self._rights
+
+    # gha, 14.03.2023
+    @property  # type: ignore
+    def rights_proto(self) -> List[Right]:
+        if self.id_:
+            if not self._rights_proto:
+                self._rights_proto = Right.retrieve_proto_for_observer(self.id_)
+        return self._rights_proto
+
+    @property  # type: ignore
+    @check_refresh
+    def id_access(self) -> int:
+        return int(self._raw_data["id_access"])

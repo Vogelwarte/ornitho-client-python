@@ -304,21 +304,24 @@ class APIRequester(object):
 
         abs_url = f"{self.api_base}{url}?{urlencode(params_dict)}"
 
-        if body:
-            for key, value in body.items():
-                if isinstance(value, datetime):
-                    # ISO Format (especially time) is accepted but mostly ignored
-                    # body[key] = value.replace(microsecond=0).isoformat()
-                    value = value.replace(microsecond=0)
-                    if value.tzinfo:
-                        value = value.astimezone(
-                            datetime.now().astimezone().tzinfo
-                        ).replace(tzinfo=None)
-                    body[key] = value.strftime("%d.%m.%Y")
-                elif isinstance(value, date):
-                    body[key] = value.strftime("%d.%m.%Y")
-
-        data = json.dumps(body) if body else None
+        if url.startswith('places'):
+            data = body
+        else:
+	        if body:
+	            for key, value in body.items():
+	                if isinstance(value, datetime):
+	                    # ISO Format (especially time) is accepted but mostly ignored
+	                    # body[key] = value.replace(microsecond=0).isoformat()
+	                    value = value.replace(microsecond=0)
+	                    if value.tzinfo:
+	                        value = value.astimezone(
+	                            datetime.now().astimezone().tzinfo
+	                        ).replace(tzinfo=None)
+	                    body[key] = value.strftime("%d.%m.%Y")
+	                elif isinstance(value, date):
+	                    body[key] = value.strftime("%d.%m.%Y")
+	
+	        data = json.dumps(body) if body else None
 
         headers = self.request_headers()
         ornitho.logger.info(
@@ -366,7 +369,10 @@ class APIRequester(object):
                 ):
                     raw_response_text = "\n".join(raw_response_text.split("\n")[1:])
                 try:
-                    decoded_json_response = json.loads(raw_response_text or "{}")
+                    if len(raw_response_text) == 0:
+                        decoded_json_response = "success"
+                    else:
+                        decoded_json_response = json.loads(raw_response_text)
                 except JSONDecodeError:
                     raise api_exception.APIException(
                         f"Cant decode the response as JSON:\n{raw_response_text}"
