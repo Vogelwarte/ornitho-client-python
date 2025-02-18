@@ -49,6 +49,9 @@ from ornitho.model import (
     Species,
     TaxonomicGroup,
     TerritorialUnit,
+    ProtocolAccess,
+    SiteAccess,
+    SiteProtocol
 )
 
 __version__ = "0.3.0"

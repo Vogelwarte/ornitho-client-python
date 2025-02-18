@@ -49,8 +49,17 @@ class ListableModel(BaseModel, ABC):
             )
             model_list: List[T] = []
             for ele in response:
-                obj = cls.create_from_ornitho_json(ele)
-                model_list.append(obj)
+                if  url == 'protocol/sites':
+                    for i in ele:
+                        ele_site = ele[i]
+                        obj = cls.create_from_ornitho_json(ele_site)
+                        model_list.append(obj)
+                else:
+                    if url == 'protocol/access':
+                        obj = cls.create_from_ornitho_json(list(ele.values())[0])
+                    else:
+                        obj = cls.create_from_ornitho_json(ele)
+                    model_list.append(obj)
         return model_list, pk
 
     @classmethod

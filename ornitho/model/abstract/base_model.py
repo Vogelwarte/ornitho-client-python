@@ -26,7 +26,7 @@ class BaseModel(ABC):
 
     @property
     def id_(self) -> Optional[Union[int, str]]:
-        """Unique identifier"""
+        """ Unique identifier """
         if self._id is None:
             if "id" in self._raw_data:
                 self._id = self._raw_data["id"]
@@ -59,7 +59,7 @@ class BaseModel(ABC):
         params: Dict[str, Any] = None,
         body: Dict[str, Any] = None,
         short_version: bool = False,
-        retries: int = 0,
+        retries: int = 5,
     ) -> List[Any]:
         """Send request to Biolovision and returns response
         :param method: HTTP Method (e.g. 'GET', 'POST', ...)
@@ -95,12 +95,15 @@ class BaseModel(ABC):
         if "@id" in data:
             identifier = int(data["@id"]) if data["@id"].isdigit() else data["@id"]
         else:
-            identifier = int(data["id"]) if data["id"].isdigit() else data["id"]
+            if cls.ENDPOINT == "protocol/sites":
+                identifier = int(data["id_universal"][2:])
+            else:
+                identifier = int(data["id"]) if data["id"].isdigit() else data["id"]
         obj = cls(identifier)
         obj._raw_data = data
         return obj
 
-    def refresh(self: T, short_version: bool = False, retries: int = 0) -> T:
+    def refresh(self: T, short_version: bool = False, retries: int = 5) -> T:
         """Refresh local model
         Call the api and refresh fields from response
         :return: Refreshed Object
@@ -140,7 +143,6 @@ class BaseModel(ABC):
     def __repr__(self) -> str:
         """Readable string representation"""
         return f"<{self.__module__}.{self.__class__.__qualname__} {self.id_}>"
-
 
 def check_refresh(func):
     def wrapper(self: T):

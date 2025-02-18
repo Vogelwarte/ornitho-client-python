@@ -1,15 +1,64 @@
 import json
 from copy import deepcopy
-from datetime import date, datetime
+from datetime import date, datetime, time
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import urlencode
 
+import requests
 from requests import Response
 from requests_oauthlib import OAuth1Session
 
 import ornitho
 from ornitho import api_exception
+
+import socket
+from urllib3.connection import HTTPConnection
+HTTPConnection.default_socket_options = (
+    HTTPConnection.default_socket_options + [
+        (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+        (socket.SOL_TCP, socket.TCP_KEEPIDLE, 45),
+        (socket.SOL_TCP, socket.TCP_KEEPINTVL, 10),
+        (socket.SOL_TCP, socket.TCP_KEEPCNT, 6)
+    ]
+)
+
+
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# gha: modifications because of connection reset problem on linux
+# ---------------------------------------------------------------
+MAX_RETRY = 10
+MAX_RETRY_FOR_SESSION = 10
+BACK_OFF_FACTOR = 0.3
+TIME_BETWEEN_RETRIES = 1000
+ERROR_CODES = (104, 401, 500, 502, 503, 504)
+
+def requests_retry_session(retries=MAX_RETRY_FOR_SESSION,
+    back_off_factor=BACK_OFF_FACTOR,
+    status_force_list=ERROR_CODES,
+    session=None):
+       session = session
+       retry = Retry(total=retries, read=retries, connect=retries,
+                     backoff_factor=back_off_factor,
+                     status_forcelist=status_force_list,
+                     method_whitelist=frozenset(['GET', 'POST']))
+       adapter = HTTPAdapter(max_retries=retry)
+
+       # modify socket options
+       my_socket_options = HTTPConnection.default_socket_options + [
+           (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+           , (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 60)
+           , (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 20)
+           , (socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 5)
+       ]
+       adapter.init_poolmanager(10, 10, block=False, socket_options=my_socket_options)
+
+       session.mount('http://', adapter)
+       session.mount('https://', adapter)
+       return session
+# -----------------------------------------------------------------
 
 try:
     import requests_cache
@@ -18,6 +67,7 @@ try:
         requests_cache.CacheMixin, OAuth1Session
     ):  # pragma: no cover
         """Session with features from both CachedSession and OAuth1Session"""
+
 
 except ImportError:  # pragma: no cover
     requests_cache = cast(Any, None)
@@ -33,6 +83,9 @@ class APIRequester(object):
         user_email: Optional[str] = None,
         user_pw: Optional[str] = None,
         api_base: Optional[str] = None,
+
+
+
     ) -> None:
         """API requester constructor
         :param consumer_key: Optional Consumer Key, overrides field from ornitho module (ornitho.consumer_key)
@@ -98,6 +151,9 @@ class APIRequester(object):
                 client_key=self.consumer_key, client_secret=self.consumer_secret
             )
 
+        # gha: modify urllib3 session and tcp socket parameter (connection reset problem on linux)
+        self.session = requests_retry_session(session=self.session)
+
     def __enter__(self):
         """Used by a with-statement"""
         return self
@@ -119,7 +175,7 @@ class APIRequester(object):
         request_all: bool = False,
         params: Optional[Dict[str, Any]] = None,
         body: Optional[Dict[str, Any]] = None,
-        retries: int = 0,
+        retries: int = 5,
     ) -> Tuple[Union[bytes, List[Dict[str, str]]], Optional[str]]:
         """Make requests to the API
         If request_all ist set, several requests calls to the API can be made, until all data is retrieved. Else a
@@ -212,7 +268,9 @@ class APIRequester(object):
         :raise GatewayTimeoutException: Request took to long, reduce possible response by adding filters
         :raise ServiceUnavailableException: Service unavailable, in most cases a retry is successful
         """
-        if response.status_code == 401:
+        if response.status_code == 104:
+            raise api_exception.APIConnectionException(response)
+        elif response.status_code == 401:
             raise api_exception.AuthenticationException(response)
         elif response.status_code == 502:
             raise api_exception.BadGatewayException(response)
@@ -306,33 +364,102 @@ class APIRequester(object):
 
         if url.startswith('places'):
             data = body
+            #data = json.dumps(body) if body else None
         else:
-	        if body:
-	            for key, value in body.items():
-	                if isinstance(value, datetime):
-	                    # ISO Format (especially time) is accepted but mostly ignored
-	                    # body[key] = value.replace(microsecond=0).isoformat()
-	                    value = value.replace(microsecond=0)
-	                    if value.tzinfo:
-	                        value = value.astimezone(
-	                            datetime.now().astimezone().tzinfo
-	                        ).replace(tzinfo=None)
-	                    body[key] = value.strftime("%d.%m.%Y")
-	                elif isinstance(value, date):
-	                    body[key] = value.strftime("%d.%m.%Y")
-	
-	        data = json.dumps(body) if body else None
+            if body:
+                for key, value in body.items():
+                    if isinstance(value, datetime):
+                        # ISO Format (especially time) is accepted but mostly ignored
+                        # body[key] = value.replace(microsecond=0).isoformat()
+                        value = value.replace(microsecond=0)
+                        if value.tzinfo:
+                            value = value.astimezone(
+                                datetime.now().astimezone().tzinfo
+                            ).replace(tzinfo=None)
+                        body[key] = value.strftime("%d.%m.%Y")
+                    elif isinstance(value, date):
+                        body[key] = value.strftime("%d.%m.%Y")
+
+            data = json.dumps(body) if body else None
 
         headers = self.request_headers()
         ornitho.logger.info(
             f"Request to Ornitho api. method={method}, url=/{url}, params={params}, short_version={short_version}, body={body}"
         )
-        raw_response = self.session.request(method, abs_url, data=data, headers=headers)
 
-        if not 200 <= raw_response.status_code < 300:
+        # gha: surround with try-catch because of connection reset problem on linux
+        # ------------------------------------------
+        try:
+        # ------------------------------------------
+            raw_response = self.session.request(method, abs_url, data=data, headers=headers)
+
+            if not 200 <= raw_response.status_code < 300:
+                if retries > 0:
+                    ornitho.logger.warning(
+                        f"Response {raw_response.status_code}. {retries} left! Retry..."
+                    )
+                    return self.request_raw(
+                        method=method,
+                        url=url,
+                        pagination_key=pagination_key,
+                        short_version=short_version,
+                        params=params,
+                        body=body,
+                        retries=retries - 1,
+                    )
+                self.handle_error_response(raw_response)
+
+            if (
+                    "pagination_key" in raw_response.headers.keys()
+                    and "Transfer-Encoding" in raw_response.headers.keys()
+                    and raw_response.headers["Transfer-Encoding"] == "chunked"
+            ):
+                pagination_key = raw_response.headers["pagination_key"] or None
+            else:
+                pagination_key = None
+
+            if method == "delete":
+                return raw_response.text, pagination_key
+            elif "Content-Type" in raw_response.headers.keys():
+                if raw_response.headers["Content-Type"].startswith("application/json"):
+                    raw_response_text = raw_response.text
+
+                    # Remove the first JSON Line, which breaks the JSON format
+                    # Hopefully there aren't any more success messages
+                    # A real WTF moment...
+                    # TODO Add other language checks
+                    if (
+                        raw_response_text.split("\n")[0]
+                        == "API message : Ihre Beobachtungsdaten wurden erfolgreich übermittelt, vielen Dank!"
+                    ):
+                        raw_response_text = "\n".join(raw_response_text.split("\n")[1:])
+                    try:
+                        if len(raw_response_text) == 0:
+                            decoded_json_response = "success"
+                        else:
+                            decoded_json_response = json.loads(raw_response_text)
+                    except JSONDecodeError:
+                        raise api_exception.APIException(
+                            f"Cant decode the response as JSON:\n{raw_response_text}"
+                        )
+                    return decoded_json_response, pagination_key
+                elif raw_response.headers["Content-Type"] == "application/pdf":
+                    return raw_response.content, pagination_key
+                elif raw_response.headers["Content-Type"] == "text/html; charset=UTF-8":
+                    return raw_response.text, pagination_key
+                else:
+                    raise api_exception.ContentTypeException(raw_response)
+            else:
+                raise api_exception.ContentTypeException(raw_response)
+
+        # gha: surround with try-catch because of connection reset problem on linux
+        # ------------------------------------------
+        except (Exception) as error:
+            import traceback
+            print("Error :", traceback.format_exc())
             if retries > 0:
                 ornitho.logger.warning(
-                    f"Response {raw_response.status_code}. {retries} left! Retry..."
+                    f"Response {retries} left! Retry..."
                 )
                 return self.request_raw(
                     method=method,
@@ -343,46 +470,5 @@ class APIRequester(object):
                     body=body,
                     retries=retries - 1,
                 )
-            self.handle_error_response(raw_response)
-
-        if (
-            "pagination_key" in raw_response.headers.keys()
-            and "Transfer-Encoding" in raw_response.headers.keys()
-            and raw_response.headers["Transfer-Encoding"] == "chunked"
-        ):
-            pagination_key = raw_response.headers["pagination_key"] or None
-        else:
-            pagination_key = None
-
-        if method == "delete":
-            return raw_response.text, pagination_key
-        elif "Content-Type" in raw_response.headers.keys():
-            if raw_response.headers["Content-Type"].startswith("application/json"):
-                raw_response_text = raw_response.text
-                # Remove the first JSON Line, which breaks the JSON format
-                # Hopefully there aren't any more success messages
-                # A real WTF moment...
-                # TODO Add other language checks
-                if (
-                    raw_response_text.split("\n")[0]
-                    == "API message : Ihre Beobachtungsdaten wurden erfolgreich übermittelt, vielen Dank!"
-                ):
-                    raw_response_text = "\n".join(raw_response_text.split("\n")[1:])
-                try:
-                    if len(raw_response_text) == 0:
-                        decoded_json_response = "success"
-                    else:
-                        decoded_json_response = json.loads(raw_response_text)
-                except JSONDecodeError:
-                    raise api_exception.APIException(
-                        f"Cant decode the response as JSON:\n{raw_response_text}"
-                    )
-                return decoded_json_response, pagination_key
-            elif raw_response.headers["Content-Type"] == "application/pdf":
-                return raw_response.content, pagination_key
-            elif raw_response.headers["Content-Type"] == "text/html; charset=UTF-8":
-                return raw_response.text, pagination_key
-            else:
-                raise api_exception.ContentTypeException(raw_response)
-        else:
-            raise api_exception.ContentTypeException(raw_response)
+            # self.handle_error_response(raw_response)
+        # ----------------------------------------
