@@ -44,6 +44,8 @@ def requests_retry_session(retries=MAX_RETRY_FOR_SESSION,
                      backoff_factor=back_off_factor,
                      status_forcelist=status_force_list,
                      method_whitelist=frozenset(['GET', 'POST']))
+                     # urllib3-version >= 1.26
+                     # allowed_methods=frozenset(['GET', 'POST']))
        adapter = HTTPAdapter(max_retries=retry)
 
        # modify socket options
@@ -470,5 +472,5 @@ class APIRequester(object):
                     body=body,
                     retries=retries - 1,
                 )
-            # self.handle_error_response(raw_response)
+            self.handle_error_response(raw_response)
         # ----------------------------------------
