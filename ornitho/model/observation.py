@@ -1,6 +1,7 @@
+import traceback
 import uuid
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -141,9 +142,20 @@ class Observation(
     @property  # type: ignore
     @check_raw_data("observers")
     def timing(self) -> datetime:
-        timing = datetime.fromtimestamp(
-            int(self._raw_data["observers"][0]["timing"]["@timestamp"]),
-        ).astimezone()
+        # gha, 25.08.2025: windows specific code
+        # special treatment of datetimes before 1970 on windows (negative timestamps are not supported on windows)
+        ts =  int(self._raw_data["observers"][0]["timing"]["@timestamp"])
+        if ts < 0:
+            epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+            try:
+                timing = epoch + timedelta(seconds=ts)
+            except Exception as e:
+                print(traceback.format_exc())
+        else:
+	        timing = datetime.fromtimestamp(
+	            int(self._raw_data["observers"][0]["timing"]["@timestamp"]),
+	        ).astimezone()
         return timing
 
     @property  # type: ignore
@@ -154,16 +166,33 @@ class Observation(
 
     @timing.setter
     def timing(self, value: datetime):
-        if "observers" in self._raw_data:
-            self._raw_data["observers"][0]["timing"] = {
-                "@timestamp": int(value.timestamp()).__str__()
-            }
+        # gha, 25.08.2025: windows specific code
+        # special treatment of datetimes before 1970 on windows (negative timestamps are not supported on windows)
+        value = value.replace(tzinfo=None)
+        if value < datetime(1970, 1, 1):
+            timezone_utc = timezone.utc
+            epoch = datetime(1970, 1, 1, tzinfo=timezone_utc)
+            if "observers" in self._raw_data:
+                self._raw_data["observers"][0]["timing"] = {
+                    "@timestamp": int((value - datetime(1970, 1, 1)).total_seconds()).__str__()
+                }
+            else:
+                self._raw_data["observers"] = [
+                    {"timing": {"@timestamp": int((value - datetime(1970, 1, 1)).total_seconds()).__str__()}}
+                ]
+            # Add date to raw_data, so ornitho can process it
+            self._raw_data["date"] = {"@timestamp": int((value - datetime(1970, 1, 1)).total_seconds()).__str__()}
         else:
-            self._raw_data["observers"] = [
-                {"timing": {"@timestamp": int(value.timestamp()).__str__()}}
-            ]
-        # Add date to raw_data, so ornitho can process it
-        self._raw_data["date"] = {"@timestamp": int(value.timestamp()).__str__()}
+	        if "observers" in self._raw_data:
+	            self._raw_data["observers"][0]["timing"] = {
+	                "@timestamp": int(value.timestamp()).__str__()
+	            }
+	        else:
+	            self._raw_data["observers"] = [
+	                {"timing": {"@timestamp": int(value.timestamp()).__str__()}}
+	            ]
+	        # Add date to raw_data, so ornitho can process it
+	        self._raw_data["date"] = {"@timestamp": int(value.timestamp()).__str__()}
 
     @property  # type: ignore
     @check_raw_data("observers")
