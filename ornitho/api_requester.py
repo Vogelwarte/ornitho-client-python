@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import urlencode
 
 import requests
-from requests import Response
+# 01.09.2025, gha, upload WVZ OAB Ornitho
+# from requests import Response
 from requests_oauthlib import OAuth1Session
 
 import ornitho
@@ -260,7 +261,9 @@ class APIRequester(object):
         return data, pk
 
     @staticmethod
-    def handle_error_response(response: Response) -> None:
+    # gha, 01.09.2025, upload WVZ OAB Ornitho
+    # def handle_error_response(response: Response) -> None:   
+    def handle_error_response(response: requests.Response) -> None:
         """Check the error response and raises a proper exception
         :param response: Erroneous response, received from the API
         :type response: Response
