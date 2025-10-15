@@ -109,6 +109,25 @@ class Place(ListableModel, UpdateableModel):
         ).astimezone()
         return created_date
 
+    # gha, 15.10.2025
+    @property  # type: ignore
+    @check_refresh
+    def created_date_win(self) -> datetime:
+        try:
+            created_date = datetime.fromtimestamp(
+                int(self._raw_data["created_date"]["@timestamp"])
+                if type(self._raw_data["created_date"]) is dict
+                else int(self._raw_data["created_date"]),
+            ).astimezone()
+        except:
+            created_date =  datetime(1970, 1, 1, 1)
+        return created_date
+
+        # timing_win = datetime(1970, 1, 1) + timedelta(
+        #     seconds=int(self._raw_data["created_date"]["@timestamp"])) + timedelta(
+        #     seconds=int(self._raw_data["created_date"]["@offset"]))
+        # return timing_win
+
     @property  # type: ignore
     @check_refresh
     def last_updated_by(self) -> Observer:
@@ -123,6 +142,26 @@ class Place(ListableModel, UpdateableModel):
             else int(self._raw_data["last_updated_date"]),
         ).astimezone()
         return last_updated_date
+        
+    # gha, 15.10.2025
+    @property  # type: ignore
+    @check_refresh
+    def last_updated_date_win(self) -> datetime:
+        try:
+            last_updated_date = datetime.fromtimestamp(
+                int(self._raw_data["last_updated_date"]["@timestamp"])
+                if type(self._raw_data["last_updated_date"]) is dict
+                else int(self._raw_data["last_updated_date"]),
+            ).astimezone()
+            return last_updated_date
+        except:
+            last_updated_date = datetime(1970, 1, 1, 1)
+        return last_updated_date
+
+        # timing_win = datetime(1970, 1, 1) + timedelta(
+        #     seconds=int(self._raw_data["last_updated_date"]["@timestamp"])) + timedelta(
+        #     seconds=int(self._raw_data["last_updated_date"]["@offset"]))
+        # return timing_win
 
     # Following Properties appear only when requesting an Observation
     @property

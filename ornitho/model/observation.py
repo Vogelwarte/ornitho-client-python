@@ -318,6 +318,14 @@ class Observation(
             else True
         )
 
+    # gha, 15.10.2025
+    @admin_hidden.setter
+    def admin_hidden(self, value: bool):
+        if "observers" in self._raw_data:
+            self._raw_data["observers"][0]["admin_hidden"] = "1" if value else "0"
+        else:
+            self._raw_data["observers"] = [{"admin_hidden": "1" if value else "0"}]
+
     @property  # type: ignore
     @check_raw_data("observers")
     def admin_hidden_type(self) -> Optional[str]:
