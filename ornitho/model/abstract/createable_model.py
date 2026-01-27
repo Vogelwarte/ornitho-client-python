@@ -25,7 +25,14 @@ class CreateableModel(BaseModel, ABC):
         url = cls.CREATE_ENDPOINT if cls.CREATE_ENDPOINT is not None else cls.ENDPOINT
         body = {"data": data}
         response = cls.request(method="post", url=url, body=body, retries=retries)
-        return response[0]["id"][0]
+        # return response[0]["id"][0]
+        if response:
+            if 'id' in response[0]:
+                return response[0]["id"][0]
+            else:
+                return 0
+        else:
+            return 0
 
     @classmethod
     @abstractmethod

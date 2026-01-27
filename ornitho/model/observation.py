@@ -720,15 +720,24 @@ class Observation(
             else None
         )
 
+    # @export_date.setter
+    # def export_date(self, value: datetime):
+    #     if "observers" in self._raw_data:
+    #         self._raw_data["observers"][0]["export_date"] = {
+    #             "@timestamp": int(value.timestamp()).__str__()
+    #         }
+    #     else:
+    #         self._raw_data["observers"] = [
+    #             {"export_date": {"@timestamp": int(value.timestamp()).__str__()}}
+    #         ]
+    # gha 20.01.2022
     @export_date.setter
     def export_date(self, value: datetime):
         if "observers" in self._raw_data:
-            self._raw_data["observers"][0]["export_date"] = {
-                "@timestamp": int(value.timestamp()).__str__()
-            }
+            self._raw_data["observers"][0]["export_date"] = int(value.timestamp()).__str__()
         else:
             self._raw_data["observers"] = [
-                {"export_date": {"@timestamp": int(value.timestamp()).__str__()}}
+                {"export_date": {int(value.timestamp()).__str__()}}
             ]
 
 
