@@ -33,7 +33,6 @@ class EstimationCode(Enum):
     MINIMUM = "MINIMUM"
     NO_VALUE = "NO_VALUE"
 
-
 class Precision(Enum):
     PRECISE = "precise"
     SQUARE = "square"
@@ -153,9 +152,9 @@ class Observation(
             except Exception as e:
                 print(traceback.format_exc())
         else:
-	        timing = datetime.fromtimestamp(
-	            int(self._raw_data["observers"][0]["timing"]["@timestamp"]),
-	        ).astimezone()
+            timing = datetime.fromtimestamp(
+                int(self._raw_data["observers"][0]["timing"]["@timestamp"]),
+            ).astimezone()
         return timing
 
     @property  # type: ignore
@@ -183,16 +182,16 @@ class Observation(
             # Add date to raw_data, so ornitho can process it
             self._raw_data["date"] = {"@timestamp": int((value - datetime(1970, 1, 1)).total_seconds()).__str__()}
         else:
-	        if "observers" in self._raw_data:
-	            self._raw_data["observers"][0]["timing"] = {
-	                "@timestamp": int(value.timestamp()).__str__()
-	            }
-	        else:
-	            self._raw_data["observers"] = [
-	                {"timing": {"@timestamp": int(value.timestamp()).__str__()}}
-	            ]
-	        # Add date to raw_data, so ornitho can process it
-	        self._raw_data["date"] = {"@timestamp": int(value.timestamp()).__str__()}
+            if "observers" in self._raw_data:
+                self._raw_data["observers"][0]["timing"] = {
+                    "@timestamp": int(value.timestamp()).__str__()
+                }
+            else:
+                self._raw_data["observers"] = [
+                    {"timing": {"@timestamp": int(value.timestamp()).__str__()}}
+                ]
+            # Add date to raw_data, so ornitho can process it
+            self._raw_data["date"] = {"@timestamp": int(value.timestamp()).__str__()}
 
     @property  # type: ignore
     @check_raw_data("observers")
@@ -592,7 +591,7 @@ class Observation(
     @property  # type: ignore
     @check_raw_data("species")
     def species(self) -> Species:
-        """Observed Species"""
+        """ Observed Species """
         if self._species is None:
             if "@id" in self._raw_data["species"]:
                 self._species = Species.create_from_ornitho_json(
@@ -611,7 +610,7 @@ class Observation(
     @property  # type: ignore
     @check_raw_data("observers")
     def observer(self) -> Observer:
-        """Observing user"""
+        """ Observing user """
         if self._observer is None:
             self._observer = Observer.create_from_ornitho_json(
                 self._raw_data["observers"][0]
@@ -626,7 +625,7 @@ class Observation(
     @property  # type: ignore
     @check_raw_data("place")
     def place(self) -> Place:
-        """Place of the observation"""
+        """ Place of the observation """
         if self._place is None:
             self._place = Place.create_from_ornitho_json(self._raw_data["place"])
         return self._place
@@ -640,16 +639,16 @@ class Observation(
     def form(self):
         if self._form is None and self.id_form is not None:
             if "form" in self._raw_data:
-                self._form = ornitho.model.form.Form.create_from_ornitho_json(
-                    self._raw_data["form"]
-                )
+	            self._form = ornitho.model.form.Form.create_from_ornitho_json(
+	                self._raw_data["form"]
+	            )
             else:
                 self._form = ornitho.model.form.Form.get(self.id_form)
         return self._form
 
     @property
     def resting_habitat(self) -> Optional[FieldOption]:
-        """Resting habitat of the observation"""
+        """ Resting habitat of the observation """
         if self._resting_habitat is None and self.id_resting_habitat:
             self._resting_habitat = FieldOption.get(self.id_resting_habitat)
         return self._resting_habitat
@@ -661,14 +660,14 @@ class Observation(
 
     @property
     def accuracy_of_location(self) -> Optional[FieldOption]:
-        """Resting habitat of the observation"""
+        """ Resting habitat of the observation """
         if self._accuracy_of_location is None and self.id_accuracy_of_location:
             self._accuracy_of_location = FieldOption.get(self.id_accuracy_of_location)
         return self._accuracy_of_location
 
     @property
     def observation_detail(self) -> Optional[FieldOption]:
-        """Observation detail of the observation"""
+        """ Observation detail of the observation """
         if self._observation_detail is None and self.id_observation_detail:
             self._observation_detail = FieldOption.get(self.id_observation_detail)
         return self._observation_detail
@@ -680,7 +679,7 @@ class Observation(
 
     @property
     def atlas_code(self) -> Optional[FieldOption]:
-        """Atlas Code of the observation"""
+        """ Atlas Code of the observation """
         if self._atlas_code is None and self.id_atlas_code:
             self._atlas_code = FieldOption.get(f"{self.id_atlas_code}")
         return self._atlas_code
@@ -830,7 +829,6 @@ class Observation(
             and "SAMPLEAREA_ID" in self._raw_data["observers"][0]["project_param"]
             else None
         )
-
 
     @property  # type: ignore
     @check_raw_data("observers")
@@ -1451,9 +1449,9 @@ class Observation(
                 updated_observations += cls.search(
                     period_choice="all", id_sightings_list=observations_chunk
                 )[0]
-        else:
-            updated_observations = [
-                cls(id_=obs_id) for obs_id in updated_observations_id
+            else:
+                updated_observations = [
+                    cls(id_=obs_id) for obs_id in updated_observations_id
             ]
 
         return {
@@ -1560,7 +1558,7 @@ class Observation(
                 observation.observation_detail = observation_detail
             else:
                 observation.id_observation_detail = observation_detail
-        
+
         if colony_nests:
             observation.colony_nests = colony_nests
 
