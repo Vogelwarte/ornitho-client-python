@@ -20,3 +20,7 @@ from ornitho.model.site import MapLayer, Site
 from ornitho.model.species import Species
 from ornitho.model.taxo_group import TaxonomicGroup
 from ornitho.model.territorial_unit import TerritorialUnit
+
+from ornitho.model.protocol_access import ProtocolAccess
+from ornitho.model.site_access import SiteAccess
+from ornitho.model.site_protocol import SiteProtocol
