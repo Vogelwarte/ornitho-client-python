@@ -390,6 +390,7 @@ class APIRequester(object):
         )
 
         # gha: surround with try-catch because of connection reset problem on linux
+        raw_response = ''
         # ------------------------------------------
         try:
         # ------------------------------------------
