@@ -339,6 +339,18 @@ class Observation(
     def source(self) -> Source:
         return Source(self._raw_data["observers"][0]["source"])
 
+
+    # gha, 11.04.2025------------------------------------
+    @source.setter
+    def source(self, value: Source):
+        if "observers" in self._raw_data:
+            self._raw_data["observers"][0]["source"] = value.value
+        else:
+            self._raw_data["observers"] = [{"source": value.value}]
+
+    # ---------------------------------------
+
+
     @property  # type: ignore
     @check_raw_data("observers")
     def medias(self) -> Optional[List[Media]]:

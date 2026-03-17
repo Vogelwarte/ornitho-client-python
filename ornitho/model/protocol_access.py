@@ -202,6 +202,43 @@ class ProtocolAccess(ListableModel, SearchableModel):
 
         return response
 
+    @classmethod
+    def update_boundary(
+        cls: Type[T],
+        body: str,
+        place_id: int,
+        request_all: Optional[bool] = False,
+        pagination_key: Optional[str] = None,
+        short_version: bool = False,
+        retries: int = 0,
+        **kwargs: Union[str, int, float, bool, date]
+    ) -> str:
+        """Retrieves a (paged) list of instances from Biolovison
+        If the list is chunked, a pagination key ist returned
+        :param request_all: Indicates, if all instances should be retrieved (may result in many API calls)
+        :param pagination_key: Pagination key, which can be used to retrieve the next page
+        :param short_version: Indicates, if a short version with foreign keys should be returned by the API.
+        :param retries: Indicates how many retries should be performed
+        :param kwargs: Additional filter values
+        :type request_all: bool
+        :type pagination_key: Optional[str]
+        :type short_version: bool
+        :type retries: int
+        :type kwargs: Union[str, int, float, bool, date]
+        :return: Tuple of instances and pagination key
+        :rtype: Tuple[List[T], Optional[str]]
+        """
+        with APIRequester() as requester:
+            url = "places/" + str(place_id)
+            response, pk = requester.request(
+                method="put",
+                url=url,
+                #body={'id_site': 1560, 'id_observer': 9062},
+                body=body.encode(encoding='utf-8'),
+            )
+
+
+        return response
 
     @property
     def test(self) -> str:
