@@ -464,20 +464,20 @@ class APIRequester(object):
                 print("Object not found")
                 retries = retries - 1
             else:
-            import traceback
-            print("Error :", traceback.format_exc())
-            if retries > 0:
-                ornitho.logger.warning(
-                    f"Response {retries} left! Retry..."
-                )
-                return self.request_raw(
-                    method=method,
-                    url=url,
-                    pagination_key=pagination_key,
-                    short_version=short_version,
-                    params=params,
-                    body=body,
-                    retries=retries - 1,
-                )
-            self.handle_error_response(raw_response)
+                import traceback
+                print("Error :", traceback.format_exc())
+                if retries > 0:
+                    ornitho.logger.warning(
+                        f"Response {retries} left! Retry..."
+                    )
+                    return self.request_raw(
+                        method=method,
+                        url=url,
+                        pagination_key=pagination_key,
+                        short_version=short_version,
+                        params=params,
+                        body=body,
+                        retries=retries - 1,
+                    )
+                self.handle_error_response(raw_response)
         # ----------------------------------------
