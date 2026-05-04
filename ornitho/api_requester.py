@@ -274,6 +274,8 @@ class APIRequester(object):
             raise api_exception.APIConnectionException(response)
         elif response.status_code == 401:
             raise api_exception.AuthenticationException(response)
+        elif response.status_code == 404:
+            raise api_exception.ObjectNotFoundException(response)
         elif response.status_code == 502:
             raise api_exception.BadGatewayException(response)
         elif response.status_code == 503:
@@ -458,6 +460,10 @@ class APIRequester(object):
         # gha: surround with try-catch because of connection reset problem on linux
         # ------------------------------------------
         except (Exception) as error:
+            if raw_response.status_code == 404:
+                print("Object not found")
+                retries = retries - 1
+            else:
             import traceback
             print("Error :", traceback.format_exc())
             if retries > 0:

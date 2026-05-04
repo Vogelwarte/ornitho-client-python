@@ -105,3 +105,7 @@ class ContentTypeException(APIHttpException):
 
 class ObjectNotFoundException(APIException):
     """Object not found exception class"""
+    def __str__(self) -> str:
+        """Readable string representation"""
+        return f"Object not found"
+

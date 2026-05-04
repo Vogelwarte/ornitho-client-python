@@ -1643,6 +1643,22 @@ class Observation(
         )
         self.relations = self.relations + [Relation(with_id=with_id, type=type)]
 
+    def delete_relation(
+        self,
+        with_id: int,
+        type: RelationType,
+        retries: int = 0,
+    ):
+        url = f"{self.ENDPOINT}/relations/{self.id_}"
+        self.request(
+            method="DELETE",
+            url=url,
+            params={"with": with_id},
+            retries=retries,
+        )
+        # self.relations.remove(Relation(with_id=with_id, type=type))
+        self.relations = [r for r in self.relations if not (r.with_id == with_id and r.type == type)]
+
     def mark_as_not_exported(self):
         self.is_exported = False
         #self.export_date = None
